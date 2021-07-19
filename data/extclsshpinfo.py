@@ -4,11 +4,14 @@ import os
 import os.path
 import numpy as np
 
+# -----此程式為用來提取nodule labels-----
+# 從LIDC-IDRI數據集中提取結節標註，找到不同醫生的結節標註與LUNA16結節標註的對應關係，並通過平均不同醫生的診斷獲得結節診斷的ground truth。
+# 如果最終平均分數等於3（不確定惡性或良性），我們刪除這個結節。對於評分大於3的結節，我們將其標記為陽性。否則，我們將它們標記為陰性。
 
 def load_itk_image(filename):
     with open(filename) as f:
         contents = f.readlines()
-        line = [k for k in contents if k.startswith('TransformMatrix')][0]
+        line = [k for k in contents if k.startswith('TransformMatrix')][0]  # TransformMatrix = 1 0 0 0 1 0 0 0 1 #100,010,001 分别代表x,y,z
         transformM = np.array(line.split(' = ')[1].split(' ')).astype('float')
         transformM = np.round(transformM)
         if np.any(transformM != np.array([1, 0, 0, 0, 1, 0, 0, 0, 1])):
@@ -16,19 +19,19 @@ def load_itk_image(filename):
         else:
             isflip = False
     itkimage = sitk.ReadImage(filename)
-    numpyImage = sitk.GetArrayFromImage(itkimage)
-    numpyOrigin = np.array(list(reversed(itkimage.GetOrigin())))
-    numpySpacing = np.array(list(reversed(itkimage.GetSpacing())))
+    numpyImage = sitk.GetArrayFromImage(itkimage)  # z,y,x
+    numpyOrigin = np.array(list(reversed(itkimage.GetOrigin())))  # 原點座標為(x,y,z)
+    numpySpacing = np.array(list(reversed(itkimage.GetSpacing())))  # 像素間隔為(x,y,z)
     return numpyImage, numpyOrigin, numpySpacing, isflip
 
-
+# 世界坐標轉換到圖像中的坐標(計算結節相對原點的坐標，然後用這個坐標除以像素間隔，即為在圖像中對應的結節位置)
 def worldToVoxelCoord(worldCoord, origin, spacing):
     stretchedVoxelCoord = np.absolute(worldCoord - origin)
     voxelCoord = stretchedVoxelCoord / spacing
     return voxelCoord
 
 
-# read map file
+# read map file (將同一個SeriesInstanceUID的PatientID StudyInstanceUID歸一起)
 mapfname = 'LIDC-IDRI-mappingLUNA16'
 sidmap = {}
 fid = open(mapfname, 'r')
@@ -36,10 +39,10 @@ line = fid.readline()
 line = fid.readline()
 while line:
     pidlist = line.split(' ')
-    # print pidlist
-    pid = pidlist[0]
-    stdid = pidlist[1]
-    srsid = pidlist[2]
+    # print(pidlist)
+    pid = pidlist[0]    # PatientID
+    stdid = pidlist[1]  # StudyInstanceUID
+    srsid = pidlist[2]  # SeriesInstanceUID
     if srsid not in sidmap:
         sidmap[srsid] = [pid, stdid]
     else:
@@ -47,9 +50,10 @@ while line:
         assert sidmap[srsid][1] == stdid
     line = fid.readline()
 fid.close()
+
 # read luna16 annotation
 colname = ['seriesuid', 'coordX', 'coordY', 'coordZ', 'diameter_mm']
-lunaantframe = pd.read_csv('annotations.csv', names=colname)
+lunaantframe = pd.read_csv('annotations.csv', names=colname)  # annotations.csv是luna16內的標註檔案(要從luna16 dataset下載)
 srslist = lunaantframe.seriesuid.tolist()[1:]
 cdxlist = lunaantframe.coordX.tolist()[1:]
 cdylist = lunaantframe.coordY.tolist()[1:]
@@ -62,12 +66,13 @@ for idx in range(len(srslist)):
         lunaantdict[srslist[idx]].append(vlu)
     else:
         lunaantdict[srslist[idx]] = [vlu]
+
 # convert luna16 annotation to LIDC-IDRI annotation space
 from multiprocessing import Pool
 
 lunantdictlidc = {}
 for fold in range(10):
-    mhdpath = '/media/data1/wentao/tianchi/luna16/subset' + str(fold)
+    mhdpath = '/media/data1/wentao/tianchi/luna16/subset' + str(fold)  # CT subset
     print('fold', fold)
 
 
@@ -82,10 +87,10 @@ for fold in range(10):
         return voxcrdlist
 
 
-    p = Pool(30)
+    p = Pool(30)  # 多處理程序池
     fnamelist = []
     for fname in os.listdir(mhdpath):
-        if fname.endswith('.mhd') and fname[:-4] in lunaantdict:
+        if fname.endswith('.mhd') and fname[:-4] in lunaantdict:  # mhd格式
             fnamelist.append(fname)
     voxcrdlist = p.map(getvoxcrd, fnamelist)
     listidx = 0
@@ -99,6 +104,7 @@ for fold in range(10):
             listidx += 1
     p.close()
 np.save('lunaantdictlidc.npy', lunantdictlidc)
+
 # read LIDC dataset
 lunantdictlidc = np.load('lunaantdictlidc.npy').item()
 import xlrd
@@ -109,7 +115,7 @@ wb = xlrd.open_workbook(os.path.join(lidccsvfname))
 for s in wb.sheets():
     if s.name == 'list3.2':
         for row in range(1, s.nrows):
-            valuelist = [int(s.cell(row, 2).value), s.cell(row, 3).value, s.cell(row, 4).value, \
+            valuelist = [int(s.cell(row, 2).value), s.cell(row, 3).value, s.cell(row, 4).value,
                          int(s.cell(row, 5).value), int(s.cell(row, 6).value), int(s.cell(row, 7).value)]
             assert abs(s.cell(row, 1).value - int(s.cell(row, 1).value)) < 1e-8
             assert abs(s.cell(row, 2).value - int(s.cell(row, 2).value)) < 1e-8
@@ -127,6 +133,7 @@ for s in wb.sheets():
                 antdict[s.cell(row, 0).value + '_' + str(int(s.cell(row, 1).value))] = [valuelist]
             else:
                 antdict[s.cell(row, 0).value + '_' + str(int(s.cell(row, 1).value))].append(valuelist)
+
 # update LIDC annotation with series number, rather than scan id
 import dicom
 
@@ -148,6 +155,7 @@ for k, v in antdict.iteritems():
                 antdictscan[pid + '_' + srs] = v
                 break
     if not hasscan: print('not found', pid, scan, sdu, srs)
+
 # find the match from LIDC-IDRI annotation
 import math
 

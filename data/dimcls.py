@@ -1,6 +1,9 @@
 import numpy as np
 import pandas as pd 
 import os
+
+# -----此程式為用來獲取基於直徑的分類-----
+
 CROPSIZE = 36
 pdframe =  pd.read_csv('annotationdetclsconv_v3.csv', names=['seriesuid', 'coordX', 'coordY', 'coordZ', 'diameter_mm', 'malignant'])
 srslst = pdframe['seriesuid'].tolist()[1:]

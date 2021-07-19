@@ -3,6 +3,8 @@ import SimpleITK as sitk
 import os
 import os.path
 import numpy as np
+
+# -----此程式為用來獲取醫生的性能-----
 fold = 1
 def load_itk_image(filename):
     with open(filename) as f:
