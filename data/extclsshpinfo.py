@@ -4,7 +4,7 @@ import os
 import os.path
 import numpy as np
 
-# -----此程式為用來提取nodule labels-----
+# -----此程式為用來提取nodule labels (NAS-Lung未改路徑)-----
 # 從LIDC-IDRI數據集中提取結節標註，找到不同醫生的結節標註與LUNA16結節標註的對應關係，並通過平均不同醫生的診斷獲得結節診斷的ground truth。
 # 如果最終平均分數等於3（不確定惡性或良性），我們刪除這個結節。對於評分大於3的結節，我們將其標記為陽性。否則，我們將它們標記為陰性。
 

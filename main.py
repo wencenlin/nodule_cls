@@ -18,6 +18,7 @@ from torch.autograd import Variable
 import logging
 import numpy as np
 import ast
+import time
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
 parser.add_argument('--lr', default=0.0002, type=float, help='learning rate')
@@ -29,7 +30,7 @@ parser.add_argument("--gpuids", type=str, default='all', help='use which gpu')
 parser.add_argument('--num_epochs', type=int, default=700)
 parser.add_argument('--num_epochs_decay', type=int, default=70)
 
-parser.add_argument('--num_workers', type=int, default=24)
+parser.add_argument('--num_workers', type=int, default=0)
 
 parser.add_argument('--beta1', type=float, default=0.5)  # momentum1 in Adam
 parser.add_argument('--beta2', type=float, default=0.999)  # momentum2 in Adam
@@ -52,7 +53,7 @@ best_acc_gbt = 0
 start_epoch = 0  # start from epoch 0 or last checkpoint epoch
 # Cal mean std
 # preprocesspath = '/media/data1/wentao/tianchi/luna16/cls/crop_v3/'
-preprocesspath = '/data/xxx/LUNA/cls/crop_v3/'
+preprocesspath = 'D:/luna16/crop_v3/'
 # preprocesspath = '/media/jehovah/Work/data/LUNA/cls/crop_v3/'
 pixvlu, npix = 0, 0
 for fname in os.listdir(preprocesspath):
@@ -112,7 +113,7 @@ crdzlst = dataframe['coordZ'].tolist()[1:]
 dimlst = dataframe['diameter_mm'].tolist()[1:]
 # test id
 teidlst = []
-for fname in os.listdir('/data/xxx/LUNA/rowfile/subset' + str(fold) + '/'):
+for fname in os.listdir('D:/luna16/data_subset/subset' + str(fold) + '/'):
     # for fname in os.listdir('/media/jehovah/Work/data/LUNA/rowfile/subset' + str(fold) + '/'):
 
     if fname.endswith('.mhd'):
@@ -156,11 +157,11 @@ for idx in range(len(tefeatlst)):
     tefeatlst[idx][-1] /= mxd
 trainset = lunanod(preprocesspath, trfnamelst, trlabellst, trfeatlst, train=True, download=True,
                    transform=transform_train)
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=20)
+trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=0)
 
 testset = lunanod(preprocesspath, tefnamelst, telabellst, tefeatlst, train=False, download=True,
                   transform=transform_test)
-testloader = torch.utils.data.DataLoader(testset, batch_size=args.batch_size, shuffle=False, num_workers=20)
+testloader = torch.utils.data.DataLoader(testset, batch_size=args.batch_size, shuffle=False, num_workers=0)
 savemodelpath = './checkpoint-' + str(fold) + '/'
 # Model
 print(args.resume)
@@ -184,7 +185,9 @@ if args.resume:
 else:
     logging.info('==> Building model..')
     logging.info('args.savemodel : ' + args.savemodel)
-    net = ConvRes([[64, 64, 64], [128, 128, 256], [256, 256, 256, 512]])
+    # net = ConvRes([[64, 64, 64], [128, 128, 256], [256, 256, 256, 512]])
+    # net = ConvRes([[4, 16, 16, 16], [64, 64, 128], [128, 128]])
+    net = ConvRes([[4, 16, 64], [64], [64, 64, 128]])
     if args.savemodel != "":
         # args.savemodel = '/home/xxx/DeepLung-master/nodcls/checkpoint-5/ckpt.t7'
         checkpoint = torch.load(args.savemodel)
@@ -234,12 +237,13 @@ def train(epoch):
     total = 0
 
     for batch_idx, (inputs, targets, feat) in enumerate(trainloader):
+        # start_time = time.time()
         if use_cuda:
             inputs, targets = inputs.cuda(), targets.cuda()
 
         optimizer.zero_grad()
         inputs, targets = Variable(inputs), Variable(targets)
-        outputs = net(inputs)
+        outputs, aux = net(inputs)
         loss = criterion(outputs, targets)
 
         loss.backward()
@@ -248,6 +252,11 @@ def train(epoch):
         _, predicted = torch.max(outputs.data, 1)
         total += targets.size(0)
         correct += predicted.eq(targets.data).cpu().sum()
+        # end_time = time.time()
+        # path = 'output11.txt'
+        # f = open(path, 'w')
+        # f.write('for:' + str(end_time - start_time))
+        # f.close()
         # progress_bar(batch_idx, len(trainloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
 
     print('ep ' + str(epoch) + ' tracc ' + str(correct.data.item() / float(total)) + ' lr ' + str(lr))
@@ -270,7 +279,7 @@ def test(epoch):
             inputs, targets = inputs.cuda(), targets.cuda()
 
         inputs, targets = Variable(inputs, requires_grad=False), Variable(targets)
-        outputs = net(inputs)
+        outputs, aux = net(inputs)
 
         loss = criterion(outputs, targets)
         test_loss += loss.data.item()

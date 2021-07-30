@@ -53,7 +53,7 @@ cdylist = lunaantframe.coordY.tolist()[1:]
 cdzlist = lunaantframe.coordZ.tolist()[1:]
 dimlist = lunaantframe.diameter_mm.tolist()[1:]
 lunaantdict = {}
-for idx in xrange(len(srslist)):
+for idx in range(len(srslist)):
 	vlu = [float(cdxlist[idx]), float(cdylist[idx]), float(cdzlist[idx]), float(dimlist[idx])]
 	if srslist[idx] in lunaantdict:
 		lunaantdict[srslist[idx]].append(vlu)

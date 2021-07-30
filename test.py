@@ -12,11 +12,11 @@ import argparse
 
 
 def load_data(test_data_path, preprocess_path, fold, batch_size, num_workers):
-    test_data_path = '/data/xxx/LUNA/rowfile/subset'
+    test_data_path = 'D:/luna16/data_subset/subset'
     crop_size = 32
     black_list = []
 
-    preprocess_path = '/data/xxx/LUNA/cls/crop_v3'
+    preprocess_path ='D:/luna16/crop_v3'
     pix_value, npix = 0, 0
     for file_name in os.listdir(preprocess_path):
         if file_name.endswith('.npy'):
@@ -169,11 +169,11 @@ def get_predicted(result_array):
 
 parser = argparse.ArgumentParser(description='test')
 parser.add_argument('--model_path', type=str,
-                    default='/data/fuhao/PartialOrderPrunning/[4,4,[4, 8, 16, 16, 16], [32, 128], [128]]/checkpoint-5/ckpt.t7',
+                    default='C:/Users/Hsutzuchiao/NAS-Lung/checkpoint-1/ckpt.t7',
                     help='ckpt.t7')
 parser.add_argument('--fold', type=int, default=5, help='1-5')
 parser.add_argument('--batch_size', type=int, default=8)
-parser.add_argument('--num_workers', type=int, default=24)
+parser.add_argument('--num_workers', type=int, default=0)
 parser.add_argument('--test_data_path', type=str, default='/data/xxx/LUNA/rowfile/subset')
 parser.add_argument('--preprocess_path', type=str, default='/data/xxx/LUNA/cls/crop_v3')
 args = parser.parse_args()

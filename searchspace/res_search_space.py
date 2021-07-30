@@ -13,21 +13,21 @@ class ResSearchSpace:
     """
     def __init__(self, channel_range, max_depth, min_depth, trained_data_path, test_data_path, fold, batch_size,
                  logging, input_shape, use_gpu, gpu_id, criterion, lr, save_module_path, num_works, epoch):
-        self.lr = lr
-        self.epoch = epoch
-        self.num_works = num_works
-        self.fold = fold
+        self.lr = lr                                   # 0.0002
+        self.epoch = epoch                             # 20
+        self.num_works = num_works                     # 0
+        self.fold = fold                               # 5
         # self.sub = sub
-        self.save_module_path = save_module_path
-        self.max_depth = max_depth
-        self.min_depth = min_depth
-        self.criterion = criterion
-        self.logging = logging
-        self.input_shape = input_shape
-        self.use_gpu = use_gpu
-        self.gpu_id = gpu_id
-        self.max_depth = max_depth
-        self.channel_range = channel_range
+        self.save_module_path = save_module_path       # D:\luna16\save_module
+        self.max_depth = max_depth                     # 9
+        self.min_depth = min_depth                     # 3
+        self.criterion = criterion                     # nn.CrossEntropyLoss()
+        self.logging = logging                         # 日誌
+        self.input_shape = input_shape                 # [1, 1, 32, 32, 32]
+        self.use_gpu = use_gpu                         # 用gpu
+        self.gpu_id = gpu_id                           # '0'
+        self.max_depth = max_depth                     # 9
+        self.channel_range = channel_range             # [4, 8, 16, 32, 64, 128]
         self.trained_module_acc_lat = np.empty((0, 3))
         # self.trained_module_acc_lat = [module_config,acc,lat]
         self.pruned_module = []

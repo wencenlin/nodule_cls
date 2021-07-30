@@ -5,7 +5,25 @@ import os
 # -----此程式為用來獲取基於直徑的分類-----
 
 CROPSIZE = 36
-pdframe =  pd.read_csv('annotationdetclsconv_v3.csv', names=['seriesuid', 'coordX', 'coordY', 'coordZ', 'diameter_mm', 'malignant'])
+# pdframe =  pd.read_csv('annotationdetclsconv_v3.csv', names=['seriesuid', 'coordX', 'coordY', 'coordZ', 'diameter_mm', 'malignant'])
+# srslst = pdframe['seriesuid'].tolist()[1:]
+# crdxlst = pdframe['coordX'].tolist()[1:]
+# crdylst = pdframe['coordY'].tolist()[1:]
+# crdzlst = pdframe['coordZ'].tolist()[1:]
+# dimlst = pdframe['diameter_mm'].tolist()[1:]
+# mlglst = pdframe['malignant'].tolist()[1:]
+#
+# newlst = []
+# import csv
+# fid = open('annotationdetclsconvfnl_v3.csv', 'w')
+# writer = csv.writer(fid)
+# writer.writerow(['seriesuid', 'coordX', 'coordY', 'coordZ', 'diameter_mm', 'malignant'])
+# for i in range(len(srslst)):
+# 	writer.writerow([srslst[i]+'-'+str(i), crdxlst[i], crdylst[i], crdzlst[i], dimlst[i], mlglst[i]])
+# 	newlst.append([srslst[i]+'-'+str(i), crdxlst[i], crdylst[i], crdzlst[i], dimlst[i], mlglst[i]])
+# fid.close()
+
+pdframe =  pd.read_csv('annotationdetclsconvfnl_v3.csv', names=['seriesuid', 'coordX', 'coordY', 'coordZ', 'diameter_mm', 'malignant'])
 srslst = pdframe['seriesuid'].tolist()[1:]
 crdxlst = pdframe['coordX'].tolist()[1:]
 crdylst = pdframe['coordY'].tolist()[1:]
@@ -15,16 +33,11 @@ mlglst = pdframe['malignant'].tolist()[1:]
 
 newlst = []
 import csv
-fid = open('annotationdetclsconvfnl_v3.csv', 'w')
-writer = csv.writer(fid)
-writer.writerow(['seriesuid', 'coordX', 'coordY', 'coordZ', 'diameter_mm', 'malignant'])
 for i in range(len(srslst)):
-	writer.writerow([srslst[i]+'-'+str(i), crdxlst[i], crdylst[i], crdzlst[i], dimlst[i], mlglst[i]])
-	newlst.append([srslst[i]+'-'+str(i), crdxlst[i], crdylst[i], crdzlst[i], dimlst[i], mlglst[i]])
-fid.close()
+    newlst.append([srslst[i], crdxlst[i], crdylst[i], crdzlst[i], dimlst[i], mlglst[i]])
 
 # train use gbt
-subset1path = '/media/data1/wentao/tianchi/luna16/subset1/'
+subset1path = 'D:/luna16/subset1/'
 testfnamelst = []
 for fname in os.listdir(subset1path):
 	if fname.endswith('.mhd'):
@@ -44,8 +57,8 @@ trainidx = testidx = 0
 for idx in range(len(newlst)):
 	fname = newlst[idx][0]
 	if fname.split('-')[0] in testfnamelst:
-		testdata[testidx] = newlst[idx][-2]
-		testlabel[testidx] = newlst[idx][-1]
+		testdata[testidx] = newlst[idx][-2]  # 大小
+		testlabel[testidx] = newlst[idx][-1]  # 良惡性
 		testidx += 1
 	else:
 		traindata[trainidx] = newlst[idx][-2]

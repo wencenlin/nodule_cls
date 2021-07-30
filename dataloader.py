@@ -12,6 +12,7 @@ else:
 import torch
 import torch.utils.data as data
 from torch.autograd import Variable
+import time
 # from .utils import download_url, check_integrity
 
 # npypath = '/media/data1/wentao/tianchi/luna16/cls/crop_v3/'
@@ -85,6 +86,7 @@ class lunanod(data.Dataset):
         Returns:
             tuple: (image, target) where target is index of the target class.
         """
+        # start_time = time.time()
         if self.train:
             img, target, feat = self.train_data[index], self.train_labels[index], self.train_feat[index]
         else:
@@ -105,7 +107,11 @@ class lunanod(data.Dataset):
             target = self.target_transform(target)
         # print(img.shape, target.shape, feat.shape)
         # print(target)
-
+        # end_time = time.time()
+        # path = 'output22.txt'
+        # f = open(path, 'w')
+        # f.write('getitem:' + str(end_time - start_time))
+        # f.close()
         return img, target, feat
 
     def __len__(self):

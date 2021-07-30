@@ -3,6 +3,9 @@ import pandas as pd
 import mahotas
 from mahotas.features.lbp import lbp
 
+# -----此程式為用來獲取基於 GBM、結節直徑和結節像素的性能-----
+# 預處理後，我們將 CT 切片轉換為 3D numpy 數組，並獲得帶有 posfix '_label.npy' 的新結節註釋。
+# 結節註釋是結節的中心和結節的直徑。 您可以使用它從預處理的 3D numpy 數組中裁剪結節以進行結節分類任務。
 CROPSIZE = 32  # 24#30#36
 print(CROPSIZE)
 pdframe = pd.read_csv('annotationdetclsconvfnl_v3.csv',
@@ -22,11 +25,12 @@ fid = open('annotationdetclsconvfnl_v3.csv', 'r')
 # writer.writerow(['seriesuid', 'coordX', 'coordY', 'coordZ', 'diameter_mm', 'malignant'])
 for i in range(len(srslst)):
     # writer.writerow([srslst[i] + '-' + str(i), crdxlst[i], crdylst[i], crdzlst[i], dimlst[i], mlglst[i]])
-    newlst.append([srslst[i] + '-' + str(i), crdxlst[i], crdylst[i], crdzlst[i], dimlst[i], mlglst[i]])
+    # newlst.append([srslst[i] + '-' + str(i), crdxlst[i], crdylst[i], crdzlst[i], dimlst[i], mlglst[i]])
+    newlst.append([srslst[i], crdxlst[i], crdylst[i], crdzlst[i], dimlst[i], mlglst[i]])
 fid.close()
 
-preprocesspath = '/media/jehovah/Work/data/LUNA/propocess/all/'
-savepath = '/media/jehovah/Work/data/LUNA/cls/crop_v3/'
+preprocesspath = 'D:/luna16/preprocess/all/'
+savepath = 'D:/luna16/crop_v3/'
 import os
 import os.path
 
@@ -40,20 +44,19 @@ for idx in range(len(newlst)):
     crdz = int(float(newlst[idx][3]))
     dim = int(float(newlst[idx][4]))
     data = np.load(os.path.join(preprocesspath, pid + '_clean.npy'))
-    bgx = max(0, crdx - CROPSIZE / 2)
-    bgy = max(0, crdy - CROPSIZE / 2)
-    bgz = max(0, crdz - CROPSIZE / 2)
+    bgx = int(max(0, crdx - CROPSIZE / 2))
+    bgy = int(max(0, crdy - CROPSIZE / 2))
+    bgz = int(max(0, crdz - CROPSIZE / 2))
     cropdata = np.ones((CROPSIZE, CROPSIZE, CROPSIZE)) * 170
     cropdatatmp = np.array(data[0, bgx:bgx + CROPSIZE, bgy:bgy + CROPSIZE, bgz:bgz + CROPSIZE])
-    cropdata[CROPSIZE / 2 - cropdatatmp.shape[0] / 2:CROPSIZE / 2 - cropdatatmp.shape[0] / 2 + cropdatatmp.shape[0], \
-    CROPSIZE / 2 - cropdatatmp.shape[1] / 2:CROPSIZE / 2 - cropdatatmp.shape[1] / 2 + cropdatatmp.shape[1], \
-    CROPSIZE / 2 - cropdatatmp.shape[2] / 2:CROPSIZE / 2 - cropdatatmp.shape[2] / 2 + cropdatatmp.shape[2]] = np.array(
-        2 - cropdatatmp)
+    cropdata[CROPSIZE // 2 - cropdatatmp.shape[0] // 2:CROPSIZE // 2 - cropdatatmp.shape[0] // 2 + cropdatatmp.shape[0],
+    CROPSIZE // 2 - cropdatatmp.shape[1] // 2:CROPSIZE // 2 - cropdatatmp.shape[1] // 2 + cropdatatmp.shape[1],
+    CROPSIZE // 2 - cropdatatmp.shape[2] // 2:CROPSIZE // 2 - cropdatatmp.shape[2] // 2 + cropdatatmp.shape[2]] = np.array(2 - cropdatatmp)
     assert cropdata.shape[0] == CROPSIZE and cropdata.shape[1] == CROPSIZE and cropdata.shape[2] == CROPSIZE
     np.save(os.path.join(savepath, fname + '.npy'), cropdata)
 
 # train use gbt
-subset1path = '/media/jehovah/Work/data/LUNA/rowfile/subset1/'
+subset1path = 'D:/luna16/data_subset/subset1/'
 testfnamelst = []
 for fname in os.listdir(subset1path):
     if fname.endswith('.mhd'):
@@ -75,9 +78,9 @@ for idx in range(len(newlst)):
     # print fname
     data = np.load(os.path.join(savepath, fname + '.npy'))
     # print data.shape
-    bgx = data.shape[0] / 2 - CROPSIZE / 2
-    bgy = data.shape[1] / 2 - CROPSIZE / 2
-    bgz = data.shape[2] / 2 - CROPSIZE / 2
+    bgx = int(data.shape[0] / 2 - CROPSIZE / 2)
+    bgy = int(data.shape[1] / 2 - CROPSIZE / 2)
+    bgz = int(data.shape[2] / 2 - CROPSIZE / 2)
     data = np.array(data[bgx:bgx + CROPSIZE, bgy:bgy + CROPSIZE, bgz:bgz + CROPSIZE])
     if fname.split('-')[0] in testfnamelst:
         testdata[testidx, :] = np.reshape(data, (-1,)) / 255
@@ -125,7 +128,7 @@ def gbtfunc(dep):
 # np.save('pixradiustest.npy', predtest[:,1])
 from multiprocessing import Pool
 
-p = Pool(30)
+p = Pool(2)
 acclst = p.map(gbtfunc, range(1, 9, 1))  # 3,4,1))#5,1))#1,9,1))
 for acc in acclst:
     print("{0:.4f}".format(acc[0]), "{0:.4f}".format(acc[1]))

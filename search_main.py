@@ -4,14 +4,19 @@ import logging
 import torch
 import argparse
 
+
+# -----Neural Architecture Search-----
+# python search_main.py --train_data_path {train_data_path}  --test_data_path {test_data_path} --save_module_path {save_module_path}
+# python search_main.py --train_data_path D:\luna16\crop_v3  --test_data_path D:\luna16\data_subset\subset --save_module_path D:\luna16\save_module
+
 # set args
 parser = argparse.ArgumentParser(description='searching')
 # parser.add_argument('--sub', type=int, default=5, help="sub data set")
 parser.add_argument('--fold', type=int, default=5, help="fold")
 parser.add_argument('--gpu_id', type=str, default='0', help="gpu_id")
-parser.add_argument('--lr', type=float, default=0.0002, help="lr")
+parser.add_argument('--lr', type=float, default=0.0002, help="lr")  # learning rate
 parser.add_argument('--epoch', type=int, default=20, help="epoch")
-parser.add_argument('--num_workers', type=int, default=20, help="num_workers")
+parser.add_argument('--num_workers', type=int, default=0, help="num_workers")
 parser.add_argument('--train_data_path', type=str, default='/data/xxx/LUNA/cls/crop_v3', help="train_data_path")
 parser.add_argument('--test_data_path', type=str, default='/data/xxx/LUNA/rowfile/subset', help="test_data_path")
 parser.add_argument('--batch_size', type=int, default=8, help="batch_size")
@@ -45,3 +50,4 @@ if __name__ == '__main__':
                                                  batch_size, logging, input_shape, use_gpu, gpu_id, criterion, lr,
                                                  save_module_path, num_works=num_workers, epoch=epoch)
     res_search.main_method()
+    print('finish')

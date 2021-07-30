@@ -134,7 +134,7 @@ def train_module(net, use_cuda, train_loader, optimizer, criterion, log, lr, con
 
             optimizer.zero_grad()
             inputs, targets = Variable(inputs), Variable(targets)
-            outputs = net(inputs)
+            outputs, aux = net(inputs)
             loss = criterion(outputs, targets)
 
             loss.backward()
@@ -165,7 +165,7 @@ def my_test_module(net, use_cuda, test_loader, criterion, log):
             inputs, targets = inputs.cuda(), targets.cuda()
 
         inputs, targets = Variable(inputs, requires_grad=False), Variable(targets)
-        outputs = net(inputs)
+        outputs, aux = net(inputs)
 
         loss = criterion(outputs, targets)
         test_loss += loss.data.item()
