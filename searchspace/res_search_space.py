@@ -31,7 +31,7 @@ class ResSearchSpace:
         self.trained_module_acc_lat = np.empty((0, 3))
         # self.trained_module_acc_lat = [module_config,acc,lat]
         self.pruned_module = []
-        # initialize all architecture set
+        # initialize all architecture set (all are [[...][...][...]])
         self.untrained_module = get_all_search_space(min_len=min_depth, max_len=max_depth, channel_range=channel_range)
         # load data set
         self.train_loader, self.test_loader = load_data(trained_data_path, test_data_path, self.fold, batch_size,
@@ -60,15 +60,16 @@ class ResSearchSpace:
         stable_time = 0
         repeat_time = 0
         while True:
-            # get untrained model
+            # get untrained model(隨機一個)
             config = self.random_generate()
             # config = [[512, 512, 512,512,512], [512, 512, 512,512,512], [512, 512, 512, 512,512]]
-            self.untrained_module.remove(config)
+            self.untrained_module.remove(config)  # 從untrained_module中移除config所指的model
             # train model
             net = ConvRes(config)
-            net_lat = get_module_lat(net, input_shape=self.input_shape)
+            # print('net: {}'.format(net))
+            net_lat = get_module_lat(net, input_shape=self.input_shape)  # y = net(x)的時間，通過網路花的時間
             net = net_to_cuda(net, use_gpu=self.use_gpu, gpu_ids=self.gpu_id)
-            optimizer = optim.Adam(net.parameters(), lr=self.lr, betas=(0.5, 0.999))
+            optimizer = optim.Adam(net.parameters(), lr=self.lr, betas=(0.5, 0.999))  # 調整node權重參數
             acc = get_acc(net, self.use_gpu, self.train_loader, self.test_loader, optimizer, self.criterion,
                           self.logging, self.lr, config, self.epoch)
             print(f'module:{config}\nacc:{acc} lat:{net_lat}')
@@ -77,7 +78,9 @@ class ResSearchSpace:
             self.trained_module_acc_lat = np.append(self.trained_module_acc_lat, [[config, acc, net_lat]], axis=0)
             # prune model
             for module in self.trained_module_acc_lat:
-                yw = get_yw(self.trained_module_acc_lat, module)
+                # yw，即已经训练出来的网络中比w性能好的最快的模型，yw的速度将会是Pw的下界
+                # Pw代表着无论是速度还是精度都不如w的模型们
+                yw = get_yw(self.trained_module_acc_lat, module)  # 在trained_module_acc_lat中是acc>= module_acc且lat最少者(可為空集合)
                 if len(yw) != 0:
                     module_config = module[0]
                     yw_config = yw[0]
@@ -85,11 +88,13 @@ class ResSearchSpace:
                     if [yw_config, module_config] not in self.trained_yw_and_module:
                         print(f'yw:{yw_config}\nmodule:{module_config}')
                         self.logging.info(f'yw:{yw_config}\nmodule:{module_config}')
+                        # narrower_module，組合出的config channel皆小於module_config
                         narrower_module = get_narrower_module(self.channel_range, module_config)
                         print('found narrower_module:' + str(narrower_module.__len__()))
                         self.logging.info(
                             'found narrower_module:' + str(narrower_module.__len__())
                         )
+                        # shallower_module，組合出的config block數小於module_config要有block數等於min_depth
                         shallower_module = get_shallower_module(self.min_depth, [module_config], shallower_module=[])
                         print('found shallower_module:' + str(shallower_module.__len__()))
                         self.logging.info(
@@ -99,7 +104,7 @@ class ResSearchSpace:
                         for i in narrower_module:
                             if i in self.untrained_module:
                                 lat = get_latency(ConvRes(i), input_size=self.input_shape)
-                                if lat > yw_lat:
+                                if lat > yw_lat:  # channel皆小於module_config但latency大於yw
                                     self.pruned_module.append(i)
                                     self.untrained_module.remove(i)
                                     pruned_narrower_module = pruned_narrower_module + 1
@@ -111,7 +116,7 @@ class ResSearchSpace:
                         for i in shallower_module:
                             if i in self.untrained_module:
                                 lat = get_latency(ConvRes(i), input_size=self.input_shape)
-                                if lat > yw_lat:
+                                if lat > yw_lat:  # block皆小於module_config但latency大於yw
                                     pruned_shallower_module = pruned_shallower_module + 1
                                     self.pruned_module.append(i)
                                     self.untrained_module.remove(i)

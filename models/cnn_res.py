@@ -109,17 +109,17 @@ class ConvRes(nn.Module):
         self.conv1 = conv3d_same_size(in_channels=1, out_channels=4, kernel_size=3)
         self.conv2 = conv3d_same_size(in_channels=4, out_channels=4, kernel_size=3)
         self.config = config
-        self.last_channel = 4
-        self.first_cbam = ResCBAMLayer(4, 32)
+        self.last_channel = 4  # 目前的out_channel
+        self.first_cbam = ResCBAMLayer(4, 32)  # last_channel: 4
         layers = []
         i = 0
-        for stage in config:
+        for stage in config:  # [4, 8, 8],  [8, 16, 32], [32, 32, 128]
             i = i+1
             layers.append(conv3d_pooling(self.last_channel, kernel_size=3, stride=2))
-            for channel in stage:
+            for channel in stage:  # 4, 8, 8
                 layers.append(ResidualBlock(self.last_channel, channel))
                 self.last_channel = channel
-            layers.append(ResCBAMLayer(self.last_channel, 32//(2**i)))
+            layers.append(ResCBAMLayer(self.last_channel, 32//(2**i)))  # feature_size:32//(2**i))
         self.layers = nn.Sequential(*layers)
         self.avg_pooling = nn.AvgPool3d(kernel_size=4, stride=4)
         self.fc = AngleLinear(in_features=self.last_channel, out_features=2)

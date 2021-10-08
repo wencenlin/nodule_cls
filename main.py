@@ -45,17 +45,15 @@ fold = args.fold
 blklst = []  # ['1.3.6.1.4.1.14519.5.2.1.6279.6001.121993590721161347818774929286-388', \
 # '1.3.6.1.4.1.14519.5.2.1.6279.6001.121993590721161347818774929286-389', \
 # '1.3.6.1.4.1.14519.5.2.1.6279.6001.132817748896065918417924920957-660']
-logging.basicConfig(filename='log-' + str(fold), level=logging.INFO)
+logging.basicConfig(filename='log-' + str(fold), level=logging.INFO)  # log-0:test_set:0
 
 use_cuda = torch.cuda.is_available()
 best_acc = 0  # best test accuracy
 best_acc_gbt = 0
 start_epoch = 0  # start from epoch 0 or last checkpoint epoch
 # Cal mean std
-# preprocesspath = '/media/data1/wentao/tianchi/luna16/cls/crop_v3/'
-preprocesspath = 'D:/luna16/crop_v3/'
-# preprocesspath = '/media/jehovah/Work/data/LUNA/cls/crop_v3/'
-pixvlu, npix = 0, 0
+preprocesspath = 'D:/luna16/crop_v3/'  # '/media/data1/wentao/tianchi/luna16/cls/crop_v3/'
+pixvlu, npix = 0, 0   # pixvlu:影像pixel值總和，npix:影像pixel個數總和
 for fname in os.listdir(preprocesspath):
     # print(fname)
     if fname.endswith('.npy'):
@@ -64,16 +62,16 @@ for fname in os.listdir(preprocesspath):
         pixvlu += np.sum(data)
         # print("data.shape = " + str(data.shape))
         npix += np.prod(data.shape)
-pixmean = pixvlu / float(npix)
+pixmean = pixvlu / float(npix)  # 所有影像pixel值平均
 pixvlu = 0
 for fname in os.listdir(preprocesspath):
     if fname.endswith('.npy'):
         if fname[:-4] in blklst: continue
         data = np.load(os.path.join(preprocesspath, fname)) - pixmean
         pixvlu += np.sum(data * data)
-pixstd = np.sqrt(pixvlu / float(npix))
+pixstd = np.sqrt(pixvlu / float(npix))  # 所有影像pixel值標準差
 # pixstd /= 255
-print(pixmean, pixstd)
+print('mean:' + str(pixmean) + ' std:' + str(pixstd))
 logging.info('mean ' + str(pixmean) + ' std ' + str(pixstd))
 # Datatransforms
 logging.info('==> Preparing data..')  # Random Crop, Zero out, x z flip, scale,
@@ -127,15 +125,16 @@ for srsid, label, x, y, z, d in zip(alllst, labellst, crdxlst, crdylst, crdzlst,
     if srsid in blklst: continue
     # crop raw pixel as feature
     data = np.load(os.path.join(preprocesspath, srsid + '.npy'))
+    # 在luna16，bgx、bgy、bgz都是0
     bgx = int(data.shape[0] / 2 - CROPSIZE / 2)
     bgy = int(data.shape[1] / 2 - CROPSIZE / 2)
     bgz = int(data.shape[2] / 2 - CROPSIZE / 2)
     data = np.array(data[bgx:bgx + CROPSIZE, bgy:bgy + CROPSIZE, bgz:bgz + CROPSIZE])
     # feat = np.hstack((np.reshape(data, (-1,)) / 255, float(d)))
     y, x, z = np.ogrid[-CROPSIZE / 2:CROPSIZE / 2, -CROPSIZE / 2:CROPSIZE / 2, -CROPSIZE / 2:CROPSIZE / 2]
-    mask = abs(y ** 3 + x ** 3 + z ** 3) <= abs(float(d)) ** 3
+    mask = abs(y ** 3 + x ** 3 + z ** 3) <= abs(float(d)) ** 3  # 未理解
     feat = np.zeros((CROPSIZE, CROPSIZE, CROPSIZE), dtype=float)
-    feat[mask] = 1
+    feat[mask] = 1  # nodule
     # print(feat.shape)
     if srsid.split('-')[0] in teidlst:
         tefnamelst.append(srsid + '.npy')
@@ -164,7 +163,7 @@ testset = lunanod(preprocesspath, tefnamelst, telabellst, tefeatlst, train=False
 testloader = torch.utils.data.DataLoader(testset, batch_size=args.batch_size, shuffle=False, num_workers=0)
 savemodelpath = './checkpoint-' + str(fold) + '/'
 # Model
-print(args.resume)
+print('resume:' + str(args.resume))
 if args.resume:
     print('==> Resuming from checkpoint..')
     print(args.savemodel)
@@ -186,8 +185,17 @@ else:
     logging.info('==> Building model..')
     logging.info('args.savemodel : ' + args.savemodel)
     # net = ConvRes([[64, 64, 64], [128, 128, 256], [256, 256, 256, 512]])
-    # net = ConvRes([[4, 16, 16, 16], [64, 64, 128], [128, 128]])
-    net = ConvRes([[4, 16, 64], [64], [64, 64, 128]])
+
+    net = ConvRes([[4, 16, 16, 16], [64, 64, 128], [128, 128]])
+    # net = ConvRes([[4, 16, 64], [64], [64, 64, 128]])
+    # net = ConvRes([[4, 8], [8, 64, 64, 64], [64, 64, 64]])
+    # net = ConvRes([[8, 16, 16], [16, 16, 64], [64, 128]])
+    # net = ConvRes([[4, 16], [32, 32], [32, 32, 32, 32]])
+    # net = ConvRes([[16], [16], [32, 64, 128, 128]])
+    # net = ConvRes([[16], [16, 16, 16, 16], [16, 16]])
+    # net = ConvRes([[4], [16, 16], [16, 32, 32, 64, 64]])
+    # net = ConvRes([[4], [4], [8, 8, 32, 128]])
+    print('net')
     if args.savemodel != "":
         # args.savemodel = '/home/xxx/DeepLung-master/nodcls/checkpoint-5/ckpt.t7'
         checkpoint = torch.load(args.savemodel)
@@ -217,9 +225,9 @@ if use_cuda:
     else:
         device_ids = map(int, list(filter(str.isdigit, args.gpuids)))
 
-    print('gpu use' + str(device_ids))
+    print('gpu use ' + str(device_ids))
     net = torch.nn.DataParallel(net, device_ids=device_ids)
-    cudnn.benchmark = False  # True
+    cudnn.benchmark = True  # True
 
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(net.parameters(), lr=args.lr, betas=(args.beta1, args.beta2))
@@ -231,7 +239,7 @@ optimizer = optim.Adam(net.parameters(), lr=args.lr, betas=(args.beta1, args.bet
 def train(epoch):
     logging.info('\nEpoch: ' + str(epoch))
     net.train()
-    get_lr(epoch)
+    get_lr(epoch)  # 判斷是否Decay learning rate
     train_loss = 0
     correct = 0
     total = 0
@@ -251,7 +259,7 @@ def train(epoch):
         train_loss += loss.data.item()
         _, predicted = torch.max(outputs.data, 1)
         total += targets.size(0)
-        correct += predicted.eq(targets.data).cpu().sum()
+        correct += predicted.eq(targets.data).cpu().sum()  # 預測與真實相符的總和
         # end_time = time.time()
         # path = 'output11.txt'
         # f = open(path, 'w')
@@ -283,7 +291,7 @@ def test(epoch):
 
         loss = criterion(outputs, targets)
         test_loss += loss.data.item()
-        _, predicted = torch.max(outputs.data, 1)
+        _, predicted = torch.max(outputs.data, 1)  # 1是類別列 對每個數據輸出它最大機率的類別
         total += targets.size(0)
         correct += predicted.eq(targets.data).cpu().sum()
         TP += ((predicted == 1) & (targets.data == 1)).cpu().sum()
@@ -315,8 +323,8 @@ def test(epoch):
     if epoch % 50 == 0:
         torch.save(state, savemodelpath + 'ckpt' + str(epoch) + '.t7')
     # best_acc = acc
-    tpr = 100. * TP.data.item() / (TP.data.item() + FN.data.item())
-    fpr = 100. * FP.data.item() / (FP.data.item() + TN.data.item())
+    tpr = 100. * TP.data.item() / (TP.data.item() + FN.data.item())  # sensitivity/recall
+    fpr = 100. * FP.data.item() / (FP.data.item() + TN.data.item())  # False Positive Rate (非Specificity)
 
     print('teacc ' + str(acc) + ' bestacc ' + str(best_acc))
     print('tpr ' + str(tpr) + ' fpr ' + str(fpr))
@@ -328,6 +336,6 @@ def test(epoch):
 
 
 if __name__ == '__main__':
-    for epoch in range(start_epoch + 1, start_epoch + args.num_epochs + 1):  # 200):
+    for epoch in range(start_epoch + 1, start_epoch + args.num_epochs + 1):  # args.num_epochs: 400
         train(epoch)
         test(epoch)

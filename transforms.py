@@ -362,6 +362,7 @@ class RandomCrop(object):
             # print 'scale out', img.shape
             pad = int(self.padding / 2)
             img1 = np.ones((img.shape[0] + pad, img.shape[1] + pad, img.shape[2] + pad)) * 170
+            # 原程式shape:(34, 34, 34)
             bg = int(self.padding / 2)
             img1[bg:bg + img.shape[0], bg:bg + img.shape[1], bg:bg + img.shape[2]] = np.array(img)
             img = np.array(img1)
@@ -372,10 +373,10 @@ class RandomCrop(object):
         # print 'pad out', w, h, d, th, tw, td
         if w == tw and h == th and d == td:
             return img
-        x1 = random.randint(0, w - tw)
+        x1 = random.randint(0, w - tw)  # x1=0,1,2
         y1 = random.randint(0, h - th)
         z1 = random.randint(0, d - td)
-        return np.array(img[x1:x1 + th, y1:y1 + tw, z1:z1 + td])
+        return np.array(img[x1:x1 + th, y1:y1 + tw, z1:z1 + td])  # shape:(32, 32, 32)
         # return img.crop((x1, y1, x1 + tw, y1 + th, z1 + td))
 
 

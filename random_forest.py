@@ -2,7 +2,7 @@ import torch
 import numpy as np
 import os
 import transforms as transforms
-import pandas as pd
+import xlwt
 from dataloader import lunanod
 from torch.autograd import Variable
 from itertools import combinations, permutations
@@ -11,11 +11,11 @@ import pandas as pd
 
 
 def load_data(fold, batch_size, num_workers):
-    test_data_path = '/data/xxx/LUNA/rowfile/subset'
+    test_data_path = 'D:/luna16/data_subset/subset'
     crop_size = 32
     black_list = []
 
-    preprocess_path = '/data/xxx/LUNA/cls/crop_v3'
+    preprocess_path = 'D:/luna16/crop_v3'
     pix_value, npix = 0, 0
     for file_name in os.listdir(preprocess_path):
         if file_name.endswith('.npy'):
@@ -102,7 +102,7 @@ def load_data(fold, batch_size, num_workers):
 
 
 def load_module(module_config, set_num):
-    path = f'/data/fuhao/PartialOrderPrunning/{module_config}/checkpoint-{set_num}/ckpt.t7'
+    path = f'D:/luna16/module_checkpoint/{module_config}/checkpoint-{set_num}/ckpt.t7'
     checkpoint = torch.load(path)
     net = checkpoint['net']
     net.cuda()
@@ -120,14 +120,15 @@ def get_targets(test_loader):
 def get_permutations(model_list, count, top_count):
     result = []
     for i in permutations(model_list, count):
+        # 每次i為model_list中一次count個model排列組合
         result.append(list(i))
-        if result.__len__() >= top_count:
+        if result.__len__() >= top_count:  # 不超過top_count次count個model排列組合
             return result
     return result
 
 
 def test_module(module_config, set_num, test_loader):
-    module = load_module(module_config, set_num)
+    module = load_module(module_config, set_num)  # set_num: test set number
     module.eval()
     result = np.empty(shape=0)
     for batch_idx, (inputs, targets, feat) in enumerate(test_loader):
@@ -144,6 +145,7 @@ def test_module(module_config, set_num, test_loader):
 
 
 def get_predicted(result_array):
+    # 多個model預測同一顆nodule的結果以多數決為準
     positive_array = result_array == 1
     negative_array = result_array == 0
     positive_count = np.sum(positive_array, axis=0)
@@ -153,14 +155,17 @@ def get_predicted(result_array):
 
 
 if __name__ == '__main__':
-    run_result = np.empty(shape=(0, 20))
-    top_count = 20
-    module_list = np.load('data/model.npy')
-    module_list = list(filter(lambda x: '[32,64,[' in x, module_list))
+    run_result = np.empty(shape=(0, 17))  # 9:原20
+    top_count = 9
+    module_list = np.load('model.npy')
+    # module_list = list(filter(lambda x: '[32,64,[' in x, module_list))
+    # print(module_list)
     logging.basicConfig(filename='modelfusion_huge_log', level=logging.INFO)
-    save_excel = 'modelfusion_huge'
-    for i in range(3, 20):
+    save_excel = 'modelfusion_huge.xls'
+    for i in range(3, 10):
         if i % 2 == 1:
+            # print(module_list[:i + 4])
+            # print('---')
             permutations_result = get_permutations(module_list[:i + 4], i, top_count)
             num = 0
             for modules in permutations_result:
@@ -172,14 +177,20 @@ if __name__ == '__main__':
                 logging.info(modules)
                 print(modules)
                 line = []
-                for fold in range(6):
-                    test_loader = load_data(fold, 8, 20)
+                line.append(i)
+                line.append(modules)
+                for fold in range(5):
+                    test_loader = load_data(fold, 64, 0)  # load_data(fold, batch_size, num_workers原20)
                     targets = get_targets(test_loader)
                     length = targets.shape[0]
                     all_result = np.empty(shape=(0, length))
                     for module_config in modules:
                         result = test_module(module_config, fold, test_loader)
+                        # print(result)
+                        # print('---')
                         all_result = np.append(all_result, [result], axis=0)
+                    # all_result:多個module_config對同一組test set的test結果
+                    # print(all_result)
                     predicted = get_predicted(all_result)
                     TP = np.sum((predicted == 1) & (targets == 1))
                     TN = np.sum((predicted == 0) & (targets == 0))
@@ -197,15 +208,17 @@ if __name__ == '__main__':
                     print(f'acc={acc}')
                     logging.info(f'tpr={tpr} fpr={fpr}')
                     print(f'tpr={tpr} fpr={fpr}')
-                run_result = np.append(run_result, np.array(line))
+                run_result = np.append(run_result, np.array(line))  # .reshape(1, 17))
     np.save('run_result_huge', run_result)
-    df = pd.DataFrame(data=run_result,
+    run_len = len(run_result)/17
+    # run_result = np.load('run_result_huge.npy')
+    result1 = np.array(run_result).reshape(int(run_len), 17)
+    df = pd.DataFrame(data= result1,    # run_result,
                       columns=['module_count', 'module_config',
                                'fold-0-acc', 'fold-0-tpr', 'fold-0-fpr',
                                'fold-1-acc', 'fold-1-tpr', 'fold-1-fpr',
                                'fold-2-acc', 'fold-2-tpr', 'fold-2-fpr',
                                'fold-3-acc', 'fold-3-tpr', 'fold-3-fpr',
-                               'fold-4-acc', 'fold-4-tpr', 'fold-4-fpr',
-                               'fold-5-acc', 'fold-5-tpr', 'fold-5-fpr'],
+                               'fold-4-acc', 'fold-4-tpr', 'fold-4-fpr'],
                       index=None)
     df.to_excel(save_excel)

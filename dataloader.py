@@ -49,8 +49,8 @@ class lunanod(data.Dataset):
                 self.train_data.append(np.load(file))
                 self.train_labels.append(label)
             self.train_data = np.concatenate(self.train_data)
-            print(len(fnamelst))
-            print(self.train_data.shape)
+            print(len(fnamelst))  # 912
+            print(self.train_data.shape)  # (29184, 32, 32)
             self.train_data = self.train_data.reshape((len(fnamelst), 32, 32, 32))
             # self.train_labels = np.asarray(self.train_labels)
             # self.train_data = self.train_data.transpose((0, 2, 3, 4, 1))  # convert to HWZC
@@ -76,7 +76,7 @@ class lunanod(data.Dataset):
             # self.test_labels = np.asarray(self.test_labels)
             # self.test_data = self.test_data.transpose((0, 2, 3, 4, 1))  # convert to HWZC
             self.test_len = len(fnamelst)
-            print(self.test_data.shape, len(self.test_labels), len(self.test_feat))
+            print(self.test_data.shape, len(self.test_labels), len(self.test_feat))  # (92, 32, 32, 32) 92 92
 
     def __getitem__(self, index):
         """

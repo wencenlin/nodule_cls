@@ -169,9 +169,9 @@ def get_predicted(result_array):
 
 parser = argparse.ArgumentParser(description='test')
 parser.add_argument('--model_path', type=str,
-                    default='C:/Users/Hsutzuchiao/NAS-Lung/checkpoint-1/ckpt.t7',
+                    default='D:/luna16/module_checkpoint/[[16], [16], [32, 64, 128, 128]]/checkpoint-4/ckpt.t7',
                     help='ckpt.t7')
-parser.add_argument('--fold', type=int, default=5, help='1-5')
+parser.add_argument('--fold', type=int, default=4, help='1-5')
 parser.add_argument('--batch_size', type=int, default=8)
 parser.add_argument('--num_workers', type=int, default=0)
 parser.add_argument('--test_data_path', type=str, default='/data/xxx/LUNA/rowfile/subset')
@@ -179,7 +179,7 @@ parser.add_argument('--preprocess_path', type=str, default='/data/xxx/LUNA/cls/c
 args = parser.parse_args()
 
 if __name__ == '__main__':
-    fold = args.fold
+    fold = args.fold  # test set
     batch_size = args.batch_size
     num_workers = args.num_workers
     test_data_path = args.test_data_path

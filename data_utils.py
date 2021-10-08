@@ -23,32 +23,33 @@ def load_data(trained_data_path, test_data_path, fold, batch_size, num_workers):
     crop_size = 32
     black_list = []
 
-    preprocess_path = trained_data_path
+    preprocess_path = trained_data_path  # D:\luna16\crop_v3
     pix_value, npix = 0, 0
     for file_name in os.listdir(preprocess_path):
         if file_name.endswith('.npy'):
             if file_name[:-4] in black_list:
                 continue
             data = np.load(os.path.join(preprocess_path, file_name))
-            pix_value += np.sum(data)
-            npix += np.prod(data.shape)
-    pix_mean = pix_value / float(npix)
+            pix_value += np.sum(data)  # 此data的所有pixel值總和
+            npix += np.prod(data.shape)  # 共多少的pixel(體積)
+    pix_mean = pix_value / float(npix)  # 平均一個pixel的值
     pix_value = 0
     for file_name in os.listdir(preprocess_path):
         if file_name.endswith('.npy'):
-            if file_name[:-4] in black_list: continue
+            if file_name[:-4] in black_list:
+                continue
             data = np.load(os.path.join(preprocess_path, file_name)) - pix_mean
             pix_value += np.sum(data * data)
-    pix_std = np.sqrt(pix_value / float(npix))
+    pix_std = np.sqrt(pix_value / float(npix))  # pixel標準差
     print(pix_mean, pix_std)
     transform_train = transforms.Compose([
         # transforms.RandomScale(range(28, 38)),
-        transforms.RandomCrop(32, padding=4),
+        transforms.RandomCrop(32, padding=4),  # pad(以水做padding) into 36*36*36 and random crop 32*32*32 from it
         transforms.RandomHorizontalFlip(),
         transforms.RandomYFlip(),
         transforms.RandomZFlip(),
-        transforms.ZeroOut(4),
-        transforms.ToTensor(),
+        transforms.ZeroOut(4),  # 在影像上4 pixel^3變為0
+        transforms.ToTensor(),  # Convert a ``PIL.Image`` or ``numpy.ndarray`` to tensor
         transforms.Normalize((pix_mean), (pix_std)),  # need to cal mean and std, revise norm func
     ])
 
@@ -79,7 +80,7 @@ def load_data(trained_data_path, test_data_path, fold, batch_size, num_workers):
     for file_name in os.listdir(test_data_path + str(fold) + '/'):
 
         if file_name.endswith('.mhd'):
-            test_id_list.append(file_name[:-4])
+            test_id_list.append(file_name[:-4])  # 1.3.6.1.4.1.14519.5.2.1.6279.6001.100332161840553388986847034053
     mxx = mxy = mxz = mxd = 0
     for srsid, label, x, y, z, d in zip(all_list, label_list, crdx_list, crdy_list, crdz_list, dim_list):
         mxx = max(abs(float(x)), mxx)
@@ -95,12 +96,12 @@ def load_data(trained_data_path, test_data_path, fold, batch_size, num_workers):
         bgz = int(data.shape[2] / 2 - crop_size / 2)
         data = np.array(data[bgx:bgx + crop_size, bgy:bgy + crop_size, bgz:bgz + crop_size])
         y, x, z = np.ogrid[-crop_size / 2:crop_size / 2, -crop_size / 2:crop_size / 2, -crop_size / 2:crop_size / 2]
-        mask = abs(y ** 3 + x ** 3 + z ** 3) <= abs(float(d)) ** 3
+        mask = abs(y ** 3 + x ** 3 + z ** 3) <= abs(float(d)) ** 3  # mask內的值為True or False
         feat = np.zeros((crop_size, crop_size, crop_size), dtype=float)
         feat[mask] = 1
         if srsid.split('-')[0] in test_id_list:
             test_file_name_list.append(srsid + '.npy')
-            test_label_list.append(int(label))
+            test_label_list.append(int(label))  # 良惡性
             test_feat_list.append(feat)
         else:
             train_file_name_list.append(srsid + '.npy')
@@ -125,7 +126,7 @@ def load_data(trained_data_path, test_data_path, fold, batch_size, num_workers):
 def train_module(net, use_cuda, train_loader, optimizer, criterion, log, lr, config, epoch):
     net.train()
 
-    for i in range(epoch):
+    for i in range(epoch):  # search space:epoch20
         correct = 0
         total = 0
         for batch_idx, (inputs, targets, feat) in enumerate(train_loader):
@@ -141,7 +142,7 @@ def train_module(net, use_cuda, train_loader, optimizer, criterion, log, lr, con
             optimizer.step()
             _, predicted = torch.max(outputs.data, 1)
             total += targets.size(0)
-            correct += predicted.eq(targets.data).cpu().sum()
+            correct += predicted.eq(targets.data).cpu().sum()  # 預測與真實相符的總和
             # progress_bar(batch_idx, len(trainloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
         print(
             'ep ' + str(i) + str(config) + ' tracc ' + str(correct.data.item() / float(total)) + ' lr ' + str(lr))
@@ -221,6 +222,8 @@ def get_module_lat(module, input_shape):
 
 
 def get_yw(modules, module):
+    # 當有除了module之外的其他modules，先收集modules_acc >= module_acc者至better_modules。
+    # 若better_modules不為空，則return其中有最少latency者
     module_acc = module[1]
     tmp_modules = copy.deepcopy(modules)
     # original_module_index = np.where(tmp_modules[:, 0] == [module[0]])[0]
