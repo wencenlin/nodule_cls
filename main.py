@@ -19,7 +19,6 @@ import logging
 import numpy as np
 import ast
 import time
-import models.net_sphere
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
 parser.add_argument('--lr', default=0.0002, type=float, help='learning rate')
@@ -230,8 +229,7 @@ if use_cuda:
     net = torch.nn.DataParallel(net, device_ids=device_ids)
     cudnn.benchmark = True  # True
 
-# criterion = nn.CrossEntropyLoss()
-criterion = models.net_sphere.AngleLoss()
+criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(net.parameters(), lr=args.lr, betas=(args.beta1, args.beta2))
 
 

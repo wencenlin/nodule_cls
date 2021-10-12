@@ -163,7 +163,9 @@ class AngleLoss(nn.Module):
         self.lamb = 1500.0
 
     def forward(self, input, target):
-        cos_theta, phi_theta = input
+        cos_theta = input[:, 0]
+        phi_theta = input[:, 1]
+        # cos_theta, phi_theta = input
         target = target.view(-1, 1)  # size=(B,1)
         index = cos_theta.data * 0.0  # size=(B, Classnum)
         # index = index.scatter(1, target.data.view(-1, 1).long(), 1)
@@ -176,7 +178,8 @@ class AngleLoss(nn.Module):
         output1 = output.clone()
         # output1[index1] = output[index] - cos_theta[index] * (1.0 + 0) / (1 + self.lamb)
         # output1[index1] = output[index] + phi_theta[index] * (1.0 + 0) / (1 + self.lamb)
-        output[index] = output1[index]- cos_theta[index] * (1.0 + 0) / (1 + self.lamb)+ phi_theta[index] * (1.0 + 0) / (1 + self.lamb)
+        output[index] = output1[index] - cos_theta[index] * (1.0 + 0) / (1 + self.lamb) + phi_theta[index] * (
+                    1.0 + 0) / (1 + self.lamb)
         logpt = F.log_softmax(output)
         logpt = logpt.gather(1, target.long())
         logpt = logpt.view(-1)
